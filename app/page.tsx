@@ -1,14 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, LogOut } from 'lucide-react'
 import { listTrackers, listEntriesForDay, addEntry, removeLastEntry } from '@/lib/db'
 import { todayKey } from '@/lib/date'
+import { useUser, signOut } from '@/lib/useUser'
 import type { Tracker } from '@/lib/types'
 import TrackerCard from '@/components/TrackerCard'
 import AddTrackerModal from '@/components/AddTrackerModal'
+import SignInScreen from '@/components/SignInScreen'
 
 export default function Dashboard() {
+  const { user, loading: authLoading } = useUser()
   const [trackers, setTrackers] = useState<Tracker[]>([])
   const [totals, setTotals] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
@@ -19,7 +22,9 @@ export default function Dashboard() {
   const today = todayKey()
 
   useEffect(() => {
+    if (!user) return // wait for auth — RLS scopes the queries to this user
     let alive = true
+    setLoading(true)
     ;(async () => {
       try {
         const [ts, entries] = await Promise.all([listTrackers(), listEntriesForDay(today)])
@@ -37,7 +42,17 @@ export default function Dashboard() {
     return () => {
       alive = false
     }
-  }, [today])
+  }, [today, user])
+
+  // Auth gate: wait for the session, then show sign-in if logged out.
+  if (authLoading) {
+    return (
+      <main className="mx-auto flex min-h-dvh w-full max-w-lg items-center justify-center px-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-300 border-t-indigo-600" />
+      </main>
+    )
+  }
+  if (!user) return <SignInScreen />
 
   async function log(tracker: Tracker, delta: number) {
     const prev = totals[tracker.id] ?? 0
@@ -58,9 +73,18 @@ export default function Dashboard() {
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-lg px-4 pb-28 pt-6">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">Tracker</h1>
-        <p className="text-sm text-zinc-500">Tap to log. See your calendar and stats.</p>
+      <header className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Tracker</h1>
+          <p className="text-sm text-zinc-500">Tap to log. See your calendar and stats.</p>
+        </div>
+        <button
+          onClick={signOut}
+          title={`Signed in as ${user.email ?? ''} — sign out`}
+          className="flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-500 hover:bg-zinc-50"
+        >
+          <LogOut size={14} /> Sign out
+        </button>
       </header>
 
       {loading ? (

@@ -13,13 +13,16 @@ import {
 } from '@/lib/db'
 import { todayKey, toDayKey } from '@/lib/date'
 import { dayTotals } from '@/lib/stats'
+import { useUser } from '@/lib/useUser'
 import type { Tracker, Entry } from '@/lib/types'
 import CalendarView from '@/components/CalendarView'
 import Analytics from '@/components/Analytics'
+import SignInScreen from '@/components/SignInScreen'
 
 export default function TrackerDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
+  const { user, loading: authLoading } = useUser()
 
   const [tracker, setTracker] = useState<Tracker | null>(null)
   const [entries, setEntries] = useState<Entry[]>([])
@@ -32,6 +35,7 @@ export default function TrackerDetail({ params }: { params: Promise<{ id: string
   const today = todayKey()
 
   useEffect(() => {
+    if (!user) return // wait for auth — RLS scopes the queries to this user
     let alive = true
     ;(async () => {
       try {
@@ -54,7 +58,7 @@ export default function TrackerDetail({ params }: { params: Promise<{ id: string
     return () => {
       alive = false
     }
-  }, [id])
+  }, [id, user])
 
   const totals = dayTotals(entries)
   const todayTotal = totals[today] ?? 0
@@ -101,6 +105,15 @@ export default function TrackerDetail({ params }: { params: Promise<{ id: string
       setBusy(false)
     }
   }
+
+  if (authLoading) {
+    return (
+      <main className="mx-auto flex min-h-dvh w-full max-w-lg items-center justify-center px-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-300 border-t-indigo-600" />
+      </main>
+    )
+  }
+  if (!user) return <SignInScreen />
 
   if (loading) {
     return (

@@ -22,6 +22,10 @@ the same stack as MapCrowd.
 
 Data is stored in Supabase and synced across every device you open the site on.
 
+**Sign in with Google** — each account sees only its own trackers (Supabase Auth
++ row-level security keyed on `user_id`). Sign in on any device to pick up where
+you left off.
+
 ## One-time setup
 
 This app needs a Supabase project. It's single-user for now (no login) — the
@@ -38,6 +42,15 @@ anon key has full access, which is fine for a personal tracker.
    NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
    ```
    The URL **must** include `https://`.
+5. **Enable Google sign-in**:
+   - Run [`supabase/02-auth.sql`](supabase/02-auth.sql) in the SQL editor (adds
+     `user_id` ownership + per-user RLS). Skip if you used the current
+     `schema.sql`, which already includes it.
+   - Supabase → **Authentication → Providers → Google**: make sure it's enabled.
+   - Supabase → **Authentication → URL Configuration → Redirect URLs**: add
+     `http://localhost:3000/**` (local dev) and `https://<your-vercel-app>/**`
+     (production). The OAuth redirect (`window.location.origin`) must be on this
+     allowlist or sign-in fails.
 
 ## Running locally
 
