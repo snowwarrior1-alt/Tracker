@@ -8,6 +8,9 @@ A dead-simple personal habit/quantity tracker. The user adds their own trackers
 chart). Every day is editable after the fact and can carry a free-text note.
 The guiding spirit: a private, honest, low-friction personal tool.
 
+## Local workspace
+This repo lives at **`C:\Users\snoww\Mapper+Tracker\tracker\`** — a gitignored subfolder of the user's `Mapper+Tracker` workspace (renamed from `Map` in June 2026), which is itself the `personal-site` portfolio repo. The sibling **MapCrowd** app (`../mapcrowd/`, github `snowwarrior1-alt/Mapper`) is a separate repo in the same workspace, and the two **share one Supabase project** (named "Mapper+Tracker", ref `tmycdgnofvmbyrmpqohw`) — see Deployment.
+
 ## Tech stack
 - **Framework**: Next.js 16 (App Router, Turbopack), all pages are `'use client'`
 - **DB + Auth**: Supabase (Postgres, RLS, Google OAuth)
@@ -114,10 +117,11 @@ supabase/
 ## Deployment
 - **GitHub**: https://github.com/snowwarrior1-alt/Tracker (Vercel auto-deploys `main`)
 - **Live**: https://dailytally.vercel.app
-- **Supabase**: shares MapCrowd's project `tmycdgnofvmbyrmpqohw` (free-tier
-  2-project cap). Tracker only owns the `trackers`/`entries`/`day_notes` tables;
-  its RLS doesn't touch MapCrowd data. Google OAuth + the Google callback are
-  already configured at the project level.
+- **Supabase**: shares MapCrowd's project — named **"Mapper+Tracker"**
+  (`tmycdgnofvmbyrmpqohw`) — to stay under the free-tier 2-project cap. Tracker
+  only owns the `trackers`/`entries`/`day_notes` tables; its RLS doesn't touch
+  MapCrowd data. Google OAuth + the Google callback are already configured at the
+  project level.
 - **Vercel env vars**: `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
   set for all environments. Must exist *before* a build (inlined at build time).
 
