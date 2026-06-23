@@ -121,6 +121,14 @@ supabase/
   `useUser()` reads `getSession()` + subscribes to `onAuthStateChange`. Both pages
   gate on it (spinner → SignInScreen → content). The redirect origin MUST be in
   Supabase → Authentication → URL Configuration → Redirect URLs or sign-in fails.
+- **Security headers** live in [`next.config.ts`](next.config.ts) `headers()` and
+  apply to every route: `X-Frame-Options: DENY` + CSP `frame-ancestors 'none'`
+  (anti-clickjacking), `X-Content-Type-Options`, `Referrer-Policy`,
+  `Permissions-Policy`, and HSTS. A full script/style/connect CSP is the next
+  step but must be validated against the live Google OAuth + Supabase flow first
+  (a wrong directive locks users out). Security model overall: client-only SPA,
+  **RLS is the boundary** (every table `auth.uid() = user_id`), the anon key is
+  public by design, and all user text (incl. notes) renders as escaped JSX.
 - **Mobile-first.** Tap targets are kept ≥44px; modals are bottom sheets
   (`items-end ... sm:items-center`, `rounded-t-2xl`) that dismiss on backdrop tap;
   the floating Add button uses `env(safe-area-inset-bottom)` (needs
