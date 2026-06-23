@@ -127,6 +127,32 @@ export function summarize(
 
 // ---- Chart range bucketing -----------------------------------------------
 
+// A named chart range. 'custom' uses caller-supplied from/to dates.
+export type RangeId = 'week' | 'month' | 'year' | 'all' | 'custom'
+
+// Resolve a named range to an inclusive [start, end] day-key window, relative
+// to `today`. 'all' starts at `since` (the tracker's first tracked day).
+export function resolveRange(
+  range: RangeId,
+  today: string,
+  since: string,
+  custom: { from: string; to: string },
+): { start: string; end: string } {
+  switch (range) {
+    case 'week':
+      return { start: addDays(today, -6), end: today }
+    case 'year':
+      return { start: addDays(today, -364), end: today }
+    case 'all':
+      return { start: since, end: today }
+    case 'custom':
+      return { start: custom.from, end: custom.to }
+    case 'month':
+    default:
+      return { start: addDays(today, -29), end: today }
+  }
+}
+
 export type Granularity = 'day' | 'week' | 'month'
 
 // One bar in the chart: a single day, a week, or a calendar month.

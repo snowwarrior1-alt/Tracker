@@ -32,8 +32,8 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return // wait for auth — RLS scopes the queries to this user
     let alive = true
-    setLoading(true)
     ;(async () => {
+      setLoading(true)
       try {
         const [ts, entries, ns] = await Promise.all([
           listTrackers(),

@@ -11,6 +11,7 @@ import {
   summarize,
   chooseGranularity,
   buildBuckets,
+  resolveRange,
 } from './stats'
 
 function entry(day: string, value = 1): Entry {
@@ -108,6 +109,24 @@ describe('summarize', () => {
     expect(s.avgPerLoggedDay).toBe(2)
     expect(s.last7).toBe(4)
     expect(s.currentStreak).toBe(2)
+  })
+})
+
+describe('resolveRange', () => {
+  const today = '2026-06-22'
+  const since = '2026-01-10'
+  const custom = { from: '2026-03-01', to: '2026-03-31' }
+
+  it('week/month/year end today and span the right number of days back', () => {
+    expect(resolveRange('week', today, since, custom)).toEqual({ start: '2026-06-16', end: today })
+    expect(resolveRange('month', today, since, custom)).toEqual({ start: '2026-05-24', end: today })
+    expect(resolveRange('year', today, since, custom)).toEqual({ start: '2025-06-23', end: today })
+  })
+  it('all starts at the tracker since-day', () => {
+    expect(resolveRange('all', today, since, custom)).toEqual({ start: since, end: today })
+  })
+  it('custom uses the supplied from/to', () => {
+    expect(resolveRange('custom', today, since, custom)).toEqual({ start: custom.from, end: custom.to })
   })
 })
 

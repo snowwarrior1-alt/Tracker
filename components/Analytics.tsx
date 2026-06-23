@@ -2,10 +2,17 @@
 
 import { useState } from 'react'
 import type { Tracker, Entry, StreakSide } from '@/lib/types'
-import { summarize, dayTotals, buildBuckets, defaultStreakSide, type Bucket } from '@/lib/stats'
+import {
+  summarize,
+  dayTotals,
+  buildBuckets,
+  defaultStreakSide,
+  resolveRange,
+  type Bucket,
+  type RangeId,
+} from '@/lib/stats'
 import { addDays, dayLabel, shortDay, shortMonth } from '@/lib/date'
 
-type RangeId = 'week' | 'month' | 'year' | 'all' | 'custom'
 type Annotation = { key: string; note: string; kind: 'peak' | 'dip' }
 
 const RANGES: { id: RangeId; label: string }[] = [
@@ -44,16 +51,7 @@ export default function Analytics({
   const [openKey, setOpenKey] = useState<string | null>(null)
 
   // Resolve the selected range to a [start, end] window.
-  let start = addDays(today, -29)
-  let end = today
-  if (range === 'week') start = addDays(today, -6)
-  else if (range === 'month') start = addDays(today, -29)
-  else if (range === 'year') start = addDays(today, -364)
-  else if (range === 'all') start = since
-  else if (range === 'custom') {
-    start = customFrom
-    end = customTo
-  }
+  const { start, end } = resolveRange(range, today, since, { from: customFrom, to: customTo })
 
   const { granularity, buckets } = buildBuckets(totals, start, end)
   const chartMax = Math.max(1, ...buckets.map((b) => b.value))

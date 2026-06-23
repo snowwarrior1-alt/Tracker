@@ -1,6 +1,7 @@
-// Supabase data access. Single-user app (no auth yet) — RLS allows the anon
-// key full access. Adding per-user auth later means adding a user_id column
-// + policies; the call sites here stay the same.
+// Supabase data access. Every table is owned by a user (`user_id`) and guarded
+// by per-user RLS (`auth.uid() = user_id`), so these queries never pass a
+// user_id — the signed-in JWT scopes every read and write, and inserts fill
+// `user_id` from `auth.uid()` by default. See supabase/schema.sql.
 
 import { supabase } from './supabase'
 import type { Tracker, Entry, TrackerType, GoalDirection, StreakSide } from './types'
