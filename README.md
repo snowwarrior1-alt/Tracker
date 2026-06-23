@@ -11,10 +11,15 @@ the same stack as MapCrowd.
 ## How it works
 
 - **Dashboard** (`/`) — every tracker as a row. Tap the check (yes/no) or the
-  `+ / −` (count) to log today. Tap the row to open its detail.
+  `+ / −` (count) to log today. Tap the row to open its detail. Each card also
+  has a **today's-note** subsection — jot a quick free-text note for today right
+  from the dashboard.
 - **Detail** (`/t/[id]`) — a bigger "today" logger, a month **calendar** tinted
   by what you logged, and **analytics**: current/longest streak, good days,
-  totals, trailing 7/30-day sums, and a 30-day bar chart.
+  totals, trailing 7/30-day sums, and a bar chart with an **adjustable range**
+  (week / month / year / all / custom) that auto-buckets daily → weekly →
+  monthly so it stays phone-readable. On the daily view, relative peaks (`▲`)
+  and dips (`▼`) that have a note get a **callout** you can hover/tap.
 - **Edit any day** — tap any day on the calendar to open a sheet that adjusts
   that day's value (or toggles yes/no) and edits a free-text **note** for the
   day. Days with a note show a dot. Backfilling earlier days extends analytics
@@ -23,6 +28,10 @@ the same stack as MapCrowd.
   *good* (more = 💚, e.g. chia seeds), *bad* (less = 💚, e.g. drinks — a clean
   day is the win), or *neutral*. This only changes how streaks/"good days" and
   the calendar colors are framed.
+- **Streak side** — choose whether a tracker's streak counts the days you
+  *did it* or the days you *skipped it*. It defaults from the goal direction at
+  creation (a "less is better" tracker streaks on clean days) and can be flipped
+  any time from the detail page.
 
 Data is stored in Supabase and synced across every device you open the site on.
 
@@ -50,9 +59,11 @@ own data (per-user RLS).
 5. **Enable Google sign-in**:
    - On an **existing** DB (created before these features), run the migrations
      you haven't yet, in order: [`supabase/02-auth.sql`](supabase/02-auth.sql)
-     (adds `user_id` ownership + per-user RLS) and
+     (adds `user_id` ownership + per-user RLS),
      [`supabase/03-notes.sql`](supabase/03-notes.sql) (adds the `day_notes`
-     table). On a **fresh** DB, `schema.sql` already includes both — skip these.
+     table), and [`supabase/04-streak-side.sql`](supabase/04-streak-side.sql)
+     (adds the `trackers.streak_side` column). On a **fresh** DB, `schema.sql`
+     already includes all three — skip these.
    - Supabase → **Authentication → Providers → Google**: make sure it's enabled.
    - Supabase → **Authentication → URL Configuration → Redirect URLs**: add
      `http://localhost:3000/**` (local dev) and `https://<your-vercel-app>/**`
@@ -85,12 +96,12 @@ app/
   layout.tsx        # Root layout
   globals.css       # Tailwind + theme vars
 components/
-  AddTrackerModal.tsx
-  TrackerCard.tsx
-  CalendarView.tsx   # Month grid; tap a day to edit it
-  DayEditor.tsx      # Per-day sheet: value editor + note
-  Analytics.tsx
-  SignInScreen.tsx   # Google sign-in gate
+  AddTrackerModal.tsx  # Create form: name, type, goal direction, streak side, emoji, color, unit
+  TrackerCard.tsx      # Dashboard row + inline log controls + today's-note subsection
+  CalendarView.tsx     # Month grid; tap a day to edit it
+  DayEditor.tsx        # Per-day sheet: value editor + note
+  Analytics.tsx        # Stat tiles + adjustable-range bar chart with note callouts
+  SignInScreen.tsx     # Google sign-in gate
 lib/
   supabase.ts       # Supabase client (validates env vars at startup)
   db.ts             # All queries (trackers, entries, notes)
@@ -104,13 +115,14 @@ supabase/
   schema.sql        # Full current schema — run once on a fresh project
   02-auth.sql       # Migration: per-user ownership + RLS
   03-notes.sql      # Migration: day_notes table
+  04-streak-side.sql # Migration: trackers.streak_side column
 ```
 
 ## Data model
 
 | Table | What |
 |---|---|
-| `trackers` | One row per thing tracked: `user_id` owner, name, `type` (`yesno`/`count`), color, emoji, optional `unit`, `goal_direction`. |
+| `trackers` | One row per thing tracked: `user_id` owner, name, `type` (`yesno`/`count`), color, emoji, optional `unit`, `goal_direction`, `streak_side` (`did`/`skipped` — which side the streak counts). |
 | `entries` | One row per tap: `user_id`, `tracker_id`, `day` (local date), `value`. A count day is `SUM(value)`; a yes/no day is "done" if any row exists. |
 | `day_notes` | Optional free-text note per (`tracker_id`, `day`). |
 
