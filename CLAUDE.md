@@ -45,7 +45,7 @@ app/
   globals.css       # Tailwind import + theme CSS vars
 components/
   AddTrackerModal.tsx  # Create form: name, type, goal direction, emoji, color, unit
-  TrackerCard.tsx      # Dashboard row + inline log controls
+  TrackerCard.tsx      # Dashboard row + inline log controls + today's-note subsection
   CalendarView.tsx     # Month grid; days are buttons → onSelectDay; note dots
   DayEditor.tsx        # Bottom-sheet for one day: value editor + note textarea
   Analytics.tsx        # Stat tiles + 30-day bar chart
@@ -151,6 +151,7 @@ supabase/
 - **Choosable streak side** ("did it" vs "skipped"), set at creation and flippable
   on the detail page
 - **Edit any past day** via a calendar-tap bottom sheet (adjust value / toggle)
-- **Per-day notes**, with peak/dip **note callouts** on the daily chart
+- **Per-day notes**, with peak/dip **note callouts** on the daily chart; today's
+  note is also editable inline from each **dashboard card** (`listNotesForDay`)
 - Google sign-in, per-user data (RLS)
 - Mobile-tuned (tap targets, bottom sheets, safe-area)

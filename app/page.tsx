@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { Plus, LogOut } from 'lucide-react'
-import { listTrackers, listEntriesForDay, addEntry, removeLastEntry } from '@/lib/db'
+import {
+  listTrackers,
+  listEntriesForDay,
+  listNotesForDay,
+  addEntry,
+  removeLastEntry,
+  saveNote,
+} from '@/lib/db'
 import { todayKey } from '@/lib/date'
 import { useUser, signOut } from '@/lib/useUser'
 import type { Tracker } from '@/lib/types'
@@ -14,6 +21,7 @@ export default function Dashboard() {
   const { user, loading: authLoading } = useUser()
   const [trackers, setTrackers] = useState<Tracker[]>([])
   const [totals, setTotals] = useState<Record<string, number>>({})
+  const [notes, setNotes] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
@@ -27,12 +35,17 @@ export default function Dashboard() {
     setLoading(true)
     ;(async () => {
       try {
-        const [ts, entries] = await Promise.all([listTrackers(), listEntriesForDay(today)])
+        const [ts, entries, ns] = await Promise.all([
+          listTrackers(),
+          listEntriesForDay(today),
+          listNotesForDay(today),
+        ])
         if (!alive) return
         const map: Record<string, number> = {}
         for (const e of entries) map[e.tracker_id] = (map[e.tracker_id] ?? 0) + e.value
         setTrackers(ts)
         setTotals(map)
+        setNotes(ns)
       } catch (e) {
         if (alive) setError(e instanceof Error ? e.message : 'Could not load your trackers.')
       } finally {
@@ -71,6 +84,28 @@ export default function Dashboard() {
     }
   }
 
+  // Save (or clear) today's note for a tracker, optimistically.
+  async function saveNoteFor(tracker: Tracker, text: string) {
+    const prev = notes[tracker.id] ?? ''
+    setNotes((m) => {
+      const n = { ...m }
+      if (text) n[tracker.id] = text
+      else delete n[tracker.id]
+      return n
+    })
+    try {
+      await saveNote(tracker.id, today, text)
+    } catch {
+      setNotes((m) => {
+        const n = { ...m }
+        if (prev) n[tracker.id] = prev
+        else delete n[tracker.id]
+        return n
+      })
+      setError('Could not save the note. Try again.')
+    }
+  }
+
   return (
     <main className="mx-auto min-h-dvh w-full max-w-lg px-4 pb-28 pt-6">
       <header className="mb-6 flex items-start justify-between">
@@ -104,8 +139,10 @@ export default function Dashboard() {
               key={t.id}
               tracker={t}
               todayTotal={totals[t.id] ?? 0}
+              note={notes[t.id] ?? ''}
               busy={busyId === t.id}
               onLog={(d) => log(t, d)}
+              onSaveNote={(text) => saveNoteFor(t, text)}
             />
           ))}
         </div>

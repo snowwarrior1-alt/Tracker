@@ -143,6 +143,24 @@ export async function listNotes(trackerId: string): Promise<Record<string, strin
   return map
 }
 
+// Notes across ALL trackers on a single day → { trackerId: note }. Powers the
+// dashboard's per-card "today's note". Tolerates a missing day_notes table.
+export async function listNotesForDay(day: string): Promise<Record<string, string>> {
+  const { data, error } = await supabase
+    .from('day_notes')
+    .select('tracker_id, note')
+    .eq('day', day)
+  if (error) {
+    if (error.code === '42P01' || error.code === 'PGRST205' || /day_notes/.test(error.message)) {
+      return {}
+    }
+    throw error
+  }
+  const map: Record<string, string> = {}
+  for (const row of data ?? []) map[row.tracker_id] = row.note
+  return map
+}
+
 // Save (upsert) or, when the text is empty, delete the note for a day.
 export async function saveNote(trackerId: string, day: string, note: string): Promise<void> {
   const text = note.trim()
