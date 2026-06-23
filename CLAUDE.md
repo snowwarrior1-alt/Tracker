@@ -9,7 +9,7 @@ chart). Every day is editable after the fact and can carry a free-text note.
 The guiding spirit: a private, honest, low-friction personal tool.
 
 ## Local workspace
-This repo lives at **`C:\Users\snoww\Mapper+Tracker\tracker\`** — a gitignored subfolder of the user's `Mapper+Tracker` workspace (renamed from `Map` in June 2026), which is itself the `personal-site` portfolio repo. The sibling **MapCrowd** app (`../mapcrowd/`, github `snowwarrior1-alt/Mapper`) is a separate repo in the same workspace, and the two **share one Supabase project** (named "Mapper+Tracker", ref `tmycdgnofvmbyrmpqohw`) — see Deployment.
+This repo lives at **`C:\Users\snoww\Mapper-Tracker\tracker\`** — a gitignored subfolder of the user's `Mapper-Tracker` workspace (renamed from `Map` → `Mapper + Tracker` → `Mapper-Tracker`; the `+`/space in the old name broke Turbopack's `next dev` HMR — keep the path free of `+`/spaces), which is itself the `personal-site` portfolio repo. The sibling **MapCrowd** app (`../mapcrowd/`, github `snowwarrior1-alt/Mapper`) is a separate repo in the same workspace, and the two **share one Supabase project** (named "Mapper+Tracker", ref `tmycdgnofvmbyrmpqohw`) — see Deployment.
 
 ## Tech stack
 - **Framework**: Next.js 16 (App Router, Turbopack), all pages are `'use client'`
