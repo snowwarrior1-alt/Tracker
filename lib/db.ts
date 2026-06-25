@@ -4,7 +4,21 @@
 // `user_id` from `auth.uid()` by default. See supabase/schema.sql.
 
 import { supabase } from './supabase'
-import type { Tracker, Entry, TrackerType, GoalDirection, StreakSide } from './types'
+import type {
+  Tracker,
+  Entry,
+  TrackerType,
+  GoalDirection,
+  StreakSide,
+  TrackerResource,
+  ResourceKind,
+} from './types'
+
+// True when a PostgREST error means "that table doesn't exist yet" — used to
+// tolerate a migration that lags a deploy (e.g. day_notes, tracker_resources).
+function isMissingTable(error: { code?: string; message?: string }, table: string): boolean {
+  return error.code === '42P01' || error.code === 'PGRST205' || new RegExp(table).test(error.message ?? '')
+}
 
 export async function listTrackers(): Promise<Tracker[]> {
   const { data, error } = await supabase
@@ -153,9 +167,7 @@ export async function listNotes(trackerId: string): Promise<Record<string, strin
   if (error) {
     // Tolerate the table not existing yet (migration 03-notes.sql not applied)
     // so the rest of the detail page still works without notes.
-    if (error.code === '42P01' || error.code === 'PGRST205' || /day_notes/.test(error.message)) {
-      return {}
-    }
+    if (isMissingTable(error, 'day_notes')) return {}
     throw error
   }
   const map: Record<string, string> = {}
@@ -171,14 +183,63 @@ export async function listNotesForDay(day: string): Promise<Record<string, strin
     .select('tracker_id, note')
     .eq('day', day)
   if (error) {
-    if (error.code === '42P01' || error.code === 'PGRST205' || /day_notes/.test(error.message)) {
-      return {}
-    }
+    if (isMissingTable(error, 'day_notes')) return {}
     throw error
   }
   const map: Record<string, string> = {}
   for (const row of data ?? []) map[row.tracker_id] = row.note
   return map
+}
+
+// ---- Tracker resources (links + notes attached to the tracker) ------------
+
+// All resources for a tracker, oldest first. Tolerates a missing table so the
+// detail page still loads if migration 05-resources.sql lags a deploy.
+export async function listResources(trackerId: string): Promise<TrackerResource[]> {
+  const { data, error } = await supabase
+    .from('tracker_resources')
+    .select('*')
+    .eq('tracker_id', trackerId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+  if (error) {
+    if (isMissingTable(error, 'tracker_resources')) return []
+    throw error
+  }
+  return data ?? []
+}
+
+export interface NewResource {
+  tracker_id: string
+  kind: ResourceKind
+  title?: string | null
+  url?: string | null
+  body?: string | null
+}
+
+export async function addResource(input: NewResource): Promise<TrackerResource> {
+  const { data, error } = await supabase.from('tracker_resources').insert(input).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function updateResource(
+  id: string,
+  patch: Partial<Pick<TrackerResource, 'title' | 'url' | 'body'>>,
+): Promise<TrackerResource> {
+  const { data, error } = await supabase
+    .from('tracker_resources')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteResource(id: string): Promise<void> {
+  const { error } = await supabase.from('tracker_resources').delete().eq('id', id)
+  if (error) throw error
 }
 
 // Save (upsert) or, when the text is empty, delete the note for a day.

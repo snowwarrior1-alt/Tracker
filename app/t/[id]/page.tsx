@@ -23,6 +23,7 @@ import type { Tracker, Entry, StreakSide } from '@/lib/types'
 import CalendarView from '@/components/CalendarView'
 import Analytics from '@/components/Analytics'
 import DayEditor from '@/components/DayEditor'
+import ResourcesSection from '@/components/ResourcesSection'
 import SignInScreen from '@/components/SignInScreen'
 
 export default function TrackerDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -352,6 +353,8 @@ export default function TrackerDetail({ params }: { params: Promise<{ id: string
         )}
         {error && <p className="mt-3 text-center text-sm text-red-600">{error}</p>}
       </div>
+
+      <ResourcesSection trackerId={tracker.id} color={tracker.color} />
 
       <section className="mb-6">
         <h2 className="mb-2 text-sm font-semibold text-zinc-500">Calendar</h2>

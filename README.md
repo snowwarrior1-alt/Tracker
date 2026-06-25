@@ -22,6 +22,10 @@ the same stack as MapCrowd.
   monthly so it stays phone-readable. On the daily view, relative peaks (`▲`)
   and dips (`▼`) that have a note get a **callout** you can hover/tap. Tap the
   **icon** in the header to swap a tracker's emoji any time.
+- **Resources** — attach reference material to the tracker itself: titled
+  **links** (e.g. a link to your stretch-routine doc) and free-text **notes**.
+  These live on the detail page and are separate from per-day notes. Links open
+  in a new tab and are validated to safe `http(s)` URLs.
 - **Edit any day** — tap any day on the calendar to open a sheet that adjusts
   that day's value (or toggles yes/no) and edits a free-text **note** for the
   day. Days with a note show a dot. Backfilling earlier days extends analytics
@@ -63,9 +67,11 @@ own data (per-user RLS).
      you haven't yet, in order: [`supabase/02-auth.sql`](supabase/02-auth.sql)
      (adds `user_id` ownership + per-user RLS),
      [`supabase/03-notes.sql`](supabase/03-notes.sql) (adds the `day_notes`
-     table), and [`supabase/04-streak-side.sql`](supabase/04-streak-side.sql)
-     (adds the `trackers.streak_side` column). On a **fresh** DB, `schema.sql`
-     already includes all three — skip these.
+     table), [`supabase/04-streak-side.sql`](supabase/04-streak-side.sql)
+     (adds the `trackers.streak_side` column), and
+     [`supabase/05-resources.sql`](supabase/05-resources.sql) (adds the
+     `tracker_resources` table for links + notes). On a **fresh** DB,
+     `schema.sql` already includes all of these — skip them.
    - Supabase → **Authentication → Providers → Google**: make sure it's enabled.
    - Supabase → **Authentication → URL Configuration → Redirect URLs**: add
      `http://localhost:3000/**` (local dev) and `https://<your-vercel-app>/**`
@@ -94,7 +100,7 @@ npm test         # vitest — unit tests for lib/stats.ts
 ```
 app/
   page.tsx          # Dashboard — tracker list + tap-to-log + add modal
-  t/[id]/page.tsx   # Tracker detail — today logger, calendar, analytics, delete
+  t/[id]/page.tsx   # Tracker detail — today logger, resources, calendar, analytics, delete
   layout.tsx        # Root layout
   globals.css       # Tailwind + theme vars
 components/
@@ -103,21 +109,24 @@ components/
   CalendarView.tsx     # Month grid; tap a day to edit it
   DayEditor.tsx        # Per-day sheet: value editor + note
   Analytics.tsx        # Stat tiles + adjustable-range bar chart with note callouts
+  ResourcesSection.tsx # Tracker-level links + notes
   SignInScreen.tsx     # Google sign-in gate
 lib/
   supabase.ts       # Supabase client (validates env vars at startup)
-  db.ts             # All queries (trackers, entries, notes)
+  db.ts             # All queries (trackers, entries, notes, resources)
   useUser.ts        # Auth hook + signInWithGoogle/signOut
-  types.ts          # Tracker, Entry, GoalDirection types
+  types.ts          # Tracker, Entry, GoalDirection, TrackerResource types
   date.ts           # Local-date helpers (day keys are local, not UTC)
+  url.ts            # Safe-URL normalize + host label for resource links
   stats.ts          # Pure analytics: streaks, day totals, summaries
-  stats.test.ts     # Unit tests
+  *.test.ts         # Unit tests (stats, date, url)
   constants.ts      # Color + emoji palettes
 supabase/
   schema.sql        # Full current schema — run once on a fresh project
   02-auth.sql       # Migration: per-user ownership + RLS
   03-notes.sql      # Migration: day_notes table
   04-streak-side.sql # Migration: trackers.streak_side column
+  05-resources.sql  # Migration: tracker_resources table (links + notes)
 ```
 
 ## Data model
@@ -127,6 +136,7 @@ supabase/
 | `trackers` | One row per thing tracked: `user_id` owner, name, `type` (`yesno`/`count`), color, emoji, optional `unit`, `goal_direction`, `streak_side` (`did`/`skipped` — which side the streak counts). |
 | `entries` | One row per tap: `user_id`, `tracker_id`, `day` (local date), `value`. A count day is `SUM(value)`; a yes/no day is "done" if any row exists. |
 | `day_notes` | Optional free-text note per (`tracker_id`, `day`). |
+| `tracker_resources` | Reference material on a tracker: `kind` (`link`/`note`), optional `title`, `url` (links), `body` (notes). |
 
 All tables are RLS-scoped to `auth.uid() = user_id`; the `user_id` columns
 default to `auth.uid()` so inserts fill the owner automatically.

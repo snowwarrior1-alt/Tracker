@@ -40,7 +40,7 @@ without them. For a CI/clean build without real creds, pass dummy values:
 ```
 app/
   page.tsx          # Dashboard: auth gate → tracker list, tap-to-log, add modal, sign-out
-  t/[id]/page.tsx   # Detail: today logger, calendar, analytics, per-day editor, editable icon, delete
+  t/[id]/page.tsx   # Detail: today logger, resources, calendar, analytics, per-day editor, editable icon, delete
   layout.tsx        # Root layout + viewport (viewport-fit=cover for safe-area)
   globals.css       # Tailwind import + theme CSS vars
 components/
@@ -49,14 +49,17 @@ components/
   CalendarView.tsx     # Month grid; days are buttons → onSelectDay; note dots
   DayEditor.tsx        # Bottom-sheet for one day: value editor + note textarea
   Analytics.tsx        # Stat tiles + 30-day bar chart
+  ResourcesSection.tsx # Tracker-level links + notes (add/edit/delete) on the detail page
   SignInScreen.tsx     # "Sign in with Google" gate
 lib/
   supabase.ts       # Supabase client (throws if env missing)
-  db.ts             # ALL queries (trackers, entries, notes); listLastEntryDays powers "days since"
+  db.ts             # ALL queries (trackers, entries, notes, resources); listLastEntryDays powers "days since"
   useUser.ts        # useUser() hook + signInWithGoogle()/signOut()
-  types.ts          # Tracker, Entry, GoalDirection, DayTotals
+  types.ts          # Tracker, Entry, GoalDirection, DayTotals, TrackerResource
   date.ts           # LOCAL day-key helpers + dayLabel/daysInMonth/daysBetween — unit-tested
   date.test.ts
+  url.ts            # normalizeUrl (safe http(s) only) + hostLabel for resource links — unit-tested
+  url.test.ts
   stats.ts          # Pure analytics (dayTotals, streaks, summarize) — unit-tested
   stats.test.ts
   constants.ts      # COLORS + EMOJIS palettes
@@ -65,6 +68,7 @@ supabase/
   02-auth.sql       # Migration: per-user ownership + RLS (already applied to live DB)
   03-notes.sql      # Migration: day_notes table (already applied to live DB)
   04-streak-side.sql # Migration: trackers.streak_side column (did/skipped)
+  05-resources.sql  # Migration: tracker_resources table (links + notes)
 ```
 
 ## Data model
@@ -73,6 +77,7 @@ supabase/
 | `trackers` | One per tracked thing: `user_id` (owner), name, `type` (`yesno`/`count`), `color`, `emoji`, `unit?`, `goal_direction` (`more`/`less`/`neutral`), `streak_side` (`did`/`skipped` — which side the streak counts), `sort_order`, `archived`, `created_at`. |
 | `entries` | One row per tap: `user_id`, `tracker_id`, `day` (LOCAL date), `value`. A count day = `SUM(value)`; a yes/no day = "done" if any row exists (kept to ≤1 row/day by the app). |
 | `day_notes` | Optional note, unique per (`tracker_id`, `day`): `user_id`, `note`, `updated_at`. |
+| `tracker_resources` | Reference material attached to a tracker (not a day): `kind` (`link`/`note`), optional `title`, `url` (links), `body` (notes), `sort_order`. A check enforces link⇒url, note⇒body. |
 
 - **RLS**: every table is `for all to authenticated using (auth.uid() = user_id)
   with check (auth.uid() = user_id)`. The `user_id` columns **default to
@@ -126,8 +131,17 @@ supabase/
   `day desc` sort). Hidden when logged today (covered by `todayTotal`) or never
   logged. It re-resolves from `todayTotal` automatically once you log today, so
   the optimistic log doesn't need to touch `lastDays`.
-- **`listNotes` tolerates a missing `day_notes` table** (returns `{}` on
-  `42P01`/`PGRST205`) so the detail page still loads if migration 03 lags a deploy.
+- **Tracker resources** (`tracker_resources`, [`ResourcesSection`](components/ResourcesSection.tsx)):
+  links + notes attached to a tracker, on the detail page below the Today logger.
+  **Link URLs go through `lib/url.ts` `normalizeUrl`** — bare domains get
+  `https://`, and only `http:`/`https:` are allowed (javascript:/data:/file:/…
+  are rejected) since the value becomes a `target="_blank"` href. Links render
+  with `rel="noopener noreferrer"`. The section self-loads via `listResources`,
+  which (like the notes readers) **tolerates a missing table** so the page still
+  works before migration 05 is applied — but adds/edits fail until it is.
+- **`listNotes`/`listResources` tolerate a missing table** via the shared
+  `isMissingTable` helper in `db.ts` (matches `42P01`/`PGRST205`/the table name),
+  so the detail page still loads if migration 03 or 05 lags a deploy.
 - **Auth is client-side, like MapCrowd** — `signInWithOAuth({ provider: 'google',
   options: { redirectTo: window.location.origin } })`, no server callback route.
   `useUser()` reads `getSession()` + subscribes to `onAuthStateChange`. Both pages
@@ -182,6 +196,8 @@ supabase/
   persist `sort_order`
 - **"Days since last logged" hint** — a subtle clock badge on each dashboard card
   when a tracker hasn't been logged today
+- **Tracker resources** — attach titled links (e.g. a routine doc) and free-text
+  notes to a tracker, on its detail page (needs migration `05-resources.sql`)
 - **Edit any past day** via a calendar-tap bottom sheet (adjust value / toggle)
 - **Per-day notes**, with peak/dip **note callouts** on the daily chart; today's
   note is also editable inline from each **dashboard card** (`listNotesForDay`)

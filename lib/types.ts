@@ -38,3 +38,20 @@ export interface Entry {
 
 // A tracker's per-day totals, keyed by 'YYYY-MM-DD'.
 export type DayTotals = Record<string, number>
+
+// Reference material attached to a tracker itself (not a specific day): a titled
+// link (e.g. a doc URL) or a free-text note. 'link' rows carry a `url`, 'note'
+// rows carry a `body`; `title` is an optional label for either.
+export type ResourceKind = 'link' | 'note'
+
+export interface TrackerResource {
+  id: string
+  tracker_id: string
+  kind: ResourceKind
+  title: string | null
+  url: string | null
+  body: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
