@@ -27,6 +27,13 @@ export function addDays(key: string, delta: number): string {
   return toDayKey(d)
 }
 
+// Whole calendar days from day-key `a` to `b` (i.e. b − a). Negative if a is
+// after b. Uses local-midnight dates so it counts day boundaries, not 24h spans.
+export function daysBetween(a: string, b: string): number {
+  const ms = fromDayKey(b).getTime() - fromDayKey(a).getTime()
+  return Math.round(ms / 86_400_000)
+}
+
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',

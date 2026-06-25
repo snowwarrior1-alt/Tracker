@@ -6,9 +6,11 @@ import {
   listTrackers,
   listEntriesForDay,
   listNotesForDay,
+  listLastEntryDays,
   addEntry,
   removeLastEntry,
   saveNote,
+  updateTracker,
 } from '@/lib/db'
 import { todayKey } from '@/lib/date'
 import { useUser, signOut } from '@/lib/useUser'
@@ -22,6 +24,7 @@ export default function Dashboard() {
   const [trackers, setTrackers] = useState<Tracker[]>([])
   const [totals, setTotals] = useState<Record<string, number>>({})
   const [notes, setNotes] = useState<Record<string, string>>({})
+  const [lastDays, setLastDays] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
@@ -35,10 +38,11 @@ export default function Dashboard() {
     ;(async () => {
       setLoading(true)
       try {
-        const [ts, entries, ns] = await Promise.all([
+        const [ts, entries, ns, last] = await Promise.all([
           listTrackers(),
           listEntriesForDay(today),
           listNotesForDay(today),
+          listLastEntryDays(),
         ])
         if (!alive) return
         const map: Record<string, number> = {}
@@ -46,6 +50,7 @@ export default function Dashboard() {
         setTrackers(ts)
         setTotals(map)
         setNotes(ns)
+        setLastDays(last)
       } catch (e) {
         if (alive) setError(e instanceof Error ? e.message : 'Could not load your trackers.')
       } finally {
@@ -106,6 +111,28 @@ export default function Dashboard() {
     }
   }
 
+  // Move a row up (dir -1) or down (dir +1) and persist the new order. Writes
+  // sort_order = list position for any row whose position changed (usually the
+  // two swapped rows), so listTrackers() returns them in this order next load.
+  async function move(index: number, dir: -1 | 1) {
+    const target = index + dir
+    if (target < 0 || target >= trackers.length) return
+    const before = trackers
+    const reordered = [...trackers]
+    ;[reordered[index], reordered[target]] = [reordered[target], reordered[index]]
+    setTrackers(reordered.map((t, i) => ({ ...t, sort_order: i })))
+    try {
+      await Promise.all(
+        reordered
+          .map((t, i) => (t.sort_order === i ? null : updateTracker(t.id, { sort_order: i })))
+          .filter((p): p is ReturnType<typeof updateTracker> => p !== null),
+      )
+    } catch {
+      setTrackers(before) // revert to the pre-move order
+      setError('Could not save the new order. Try again.')
+    }
+  }
+
   return (
     <main className="mx-auto min-h-dvh w-full max-w-lg px-4 pb-28 pt-6">
       <header className="mb-6 flex items-start justify-between">
@@ -134,13 +161,19 @@ export default function Dashboard() {
         <EmptyState onAdd={() => setShowAdd(true)} />
       ) : (
         <div className="space-y-2">
-          {trackers.map((t) => (
+          {trackers.map((t, i) => (
             <TrackerCard
               key={t.id}
               tracker={t}
               todayTotal={totals[t.id] ?? 0}
               note={notes[t.id] ?? ''}
+              lastDay={lastDays[t.id] ?? null}
+              today={today}
               busy={busyId === t.id}
+              canMoveUp={i > 0}
+              canMoveDown={i < trackers.length - 1}
+              onMoveUp={() => move(i, -1)}
+              onMoveDown={() => move(i, 1)}
               onLog={(d) => log(t, d)}
               onSaveNote={(text) => saveNoteFor(t, text)}
             />

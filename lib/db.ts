@@ -46,10 +46,13 @@ export async function createTracker(input: NewTracker): Promise<Tracker> {
   return data
 }
 
-// Patch editable settings on a tracker (e.g. which side the streak counts).
+// Patch editable settings on a tracker (e.g. which side the streak counts, or
+// its position in the dashboard list via sort_order).
 export async function updateTracker(
   id: string,
-  patch: Partial<Pick<Tracker, 'streak_side' | 'goal_direction' | 'name' | 'color' | 'emoji' | 'unit'>>,
+  patch: Partial<
+    Pick<Tracker, 'streak_side' | 'goal_direction' | 'name' | 'color' | 'emoji' | 'unit' | 'sort_order'>
+  >,
 ): Promise<Tracker> {
   const { data, error } = await supabase
     .from('trackers')
@@ -82,6 +85,22 @@ export async function listEntriesForDay(day: string): Promise<Entry[]> {
   const { data, error } = await supabase.from('entries').select('*').eq('day', day)
   if (error) throw error
   return data ?? []
+}
+
+// Most recent logged day per tracker → { trackerId: 'YYYY-MM-DD' }. Powers the
+// dashboard's "days since last logged" hint. RLS scopes this to the user; we
+// only pull (tracker_id, day) and keep the first (latest) seen per tracker.
+export async function listLastEntryDays(): Promise<Record<string, string>> {
+  const { data, error } = await supabase
+    .from('entries')
+    .select('tracker_id, day')
+    .order('day', { ascending: false })
+  if (error) throw error
+  const map: Record<string, string> = {}
+  for (const row of data ?? []) {
+    if (!(row.tracker_id in map)) map[row.tracker_id] = row.day
+  }
+  return map
 }
 
 // Record one tap (+value) on a day.

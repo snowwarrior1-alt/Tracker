@@ -45,17 +45,18 @@ app/
   globals.css       # Tailwind import + theme CSS vars
 components/
   AddTrackerModal.tsx  # Create form: name, type, goal direction, emoji, color, unit
-  TrackerCard.tsx      # Dashboard row + inline log controls + today's-note subsection
+  TrackerCard.tsx      # Dashboard row: log controls, today's-note, reorder arrows, "days since" hint
   CalendarView.tsx     # Month grid; days are buttons → onSelectDay; note dots
   DayEditor.tsx        # Bottom-sheet for one day: value editor + note textarea
   Analytics.tsx        # Stat tiles + 30-day bar chart
   SignInScreen.tsx     # "Sign in with Google" gate
 lib/
   supabase.ts       # Supabase client (throws if env missing)
-  db.ts             # ALL queries (trackers, entries, notes)
+  db.ts             # ALL queries (trackers, entries, notes); listLastEntryDays powers "days since"
   useUser.ts        # useUser() hook + signInWithGoogle()/signOut()
   types.ts          # Tracker, Entry, GoalDirection, DayTotals
-  date.ts           # LOCAL day-key helpers + dayLabel/daysInMonth
+  date.ts           # LOCAL day-key helpers + dayLabel/daysInMonth/daysBetween — unit-tested
+  date.test.ts
   stats.ts          # Pure analytics (dayTotals, streaks, summarize) — unit-tested
   stats.test.ts
   constants.ts      # COLORS + EMOJIS palettes
@@ -114,6 +115,17 @@ supabase/
   palette as the create modal) that calls `changeEmoji`, persisting optimistically
   with rollback on error — the same pattern as the streak-side toggle. `name`,
   `color`, and `unit` are patchable too but have no UI yet.
+- **Dashboard ordering** is `trackers.sort_order` asc (then `created_at`).
+  `listTrackers` reads it; the dashboard's up/down arrows swap two rows and
+  persist `sort_order = list position` via `updateTracker` for every row whose
+  position changed (optimistic, reverts on failure). The column predates this —
+  no migration needed.
+- **"Days since" hint** (dashboard card): `daysBetween(lastDay, today)` where
+  `lastDay` comes from `db.ts` `listLastEntryDays()` (latest entry day per
+  tracker; pulls `(tracker_id, day)` for the user and keeps the first of a
+  `day desc` sort). Hidden when logged today (covered by `todayTotal`) or never
+  logged. It re-resolves from `todayTotal` automatically once you log today, so
+  the optimistic log doesn't need to touch `lastDays`.
 - **`listNotes` tolerates a missing `day_notes` table** (returns `{}` on
   `42P01`/`PGRST205`) so the detail page still loads if migration 03 lags a deploy.
 - **Auth is client-side, like MapCrowd** — `signInWithOAuth({ provider: 'google',
@@ -166,6 +178,10 @@ supabase/
   on the detail page
 - **Editable icon** — tap the detail-page header tile to pick a new emoji (persists
   via `updateTracker`)
+- **Reorderable dashboard** — up/down arrows on each card move trackers and
+  persist `sort_order`
+- **"Days since last logged" hint** — a subtle clock badge on each dashboard card
+  when a tracker hasn't been logged today
 - **Edit any past day** via a calendar-tap bottom sheet (adjust value / toggle)
 - **Per-day notes**, with peak/dip **note callouts** on the daily chart; today's
   note is also editable inline from each **dashboard card** (`listNotesForDay`)

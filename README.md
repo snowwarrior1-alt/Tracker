@@ -13,7 +13,8 @@ the same stack as MapCrowd.
 - **Dashboard** (`/`) — every tracker as a row. Tap the check (yes/no) or the
   `+ / −` (count) to log today. Tap the row to open its detail. Each card also
   has a **today's-note** subsection — jot a quick free-text note for today right
-  from the dashboard.
+  from the dashboard. Use the **up/down arrows** to reorder your trackers, and a
+  subtle clock badge shows **how many days since** you last logged each one.
 - **Detail** (`/t/[id]`) — a bigger "today" logger, a month **calendar** tinted
   by what you logged, and **analytics**: current/longest streak, good days,
   totals, trailing 7/30-day sums, and a bar chart with an **adjustable range**

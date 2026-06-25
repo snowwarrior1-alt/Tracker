@@ -2,29 +2,54 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Minus, Plus, Check, ChevronRight, StickyNote } from 'lucide-react'
+import { Minus, Plus, Check, ChevronRight, ChevronUp, ChevronDown, StickyNote, Clock } from 'lucide-react'
 import type { Tracker } from '@/lib/types'
+import { daysBetween } from '@/lib/date'
 
 // One row on the dashboard. `todayTotal` is the tracker's logged value for
 // today; `onLog` applies a delta (+1 / -1) with optimistic UI handled by the
 // parent. `onSaveNote` persists today's free-text note for this tracker.
+// `lastDay` is the most recent day this tracker was logged (for the "days since"
+// hint); the move handlers reorder this row in the dashboard list.
 export default function TrackerCard({
   tracker,
   todayTotal,
   note,
+  lastDay,
+  today,
   busy,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
   onLog,
   onSaveNote,
 }: {
   tracker: Tracker
   todayTotal: number
   note: string
+  lastDay: string | null
+  today: string
   busy: boolean
+  canMoveUp: boolean
+  canMoveDown: boolean
+  onMoveUp: () => void
+  onMoveDown: () => void
   onLog: (delta: number) => void
   onSaveNote: (text: string) => void | Promise<void>
 }) {
   const done = todayTotal > 0
   const unit = tracker.unit?.trim()
+
+  // Whole days since this tracker was last logged. Null when it was logged today
+  // (todayTotal covers that) or never logged at all.
+  const sinceDays = done || !lastDay ? null : daysBetween(lastDay, today)
+  const statusText =
+    tracker.type === 'yesno'
+      ? done
+        ? 'Done today'
+        : 'Not yet today'
+      : `${todayTotal}${unit ? ' ' + unit : ''} today`
 
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(note)
@@ -40,7 +65,27 @@ export default function TrackerCard({
 
   return (
     <div className="rounded-xl bg-white shadow-sm ring-1 ring-black/5">
-      <div className="flex items-center gap-3 p-3">
+      <div className="flex items-center gap-2 p-3">
+        {/* Reorder handles — the active arrow hides on the first/last row */}
+        <div className="-ml-1 flex flex-none flex-col">
+          <button
+            onClick={onMoveUp}
+            disabled={!canMoveUp}
+            aria-label={`Move ${tracker.name} up`}
+            className="flex h-[22px] w-5 items-center justify-center rounded text-zinc-300 hover:bg-zinc-100 hover:text-zinc-600 disabled:pointer-events-none disabled:opacity-0"
+          >
+            <ChevronUp size={15} />
+          </button>
+          <button
+            onClick={onMoveDown}
+            disabled={!canMoveDown}
+            aria-label={`Move ${tracker.name} down`}
+            className="flex h-[22px] w-5 items-center justify-center rounded text-zinc-300 hover:bg-zinc-100 hover:text-zinc-600 disabled:pointer-events-none disabled:opacity-0"
+          >
+            <ChevronDown size={15} />
+          </button>
+        </div>
+
         <Link
           href={`/t/${tracker.id}`}
           className="flex min-w-0 flex-1 items-center gap-3"
@@ -54,12 +99,16 @@ export default function TrackerCard({
           </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate font-medium">{tracker.name}</span>
-            <span className="block text-xs text-zinc-500">
-              {tracker.type === 'yesno'
-                ? done
-                  ? 'Done today'
-                  : 'Not yet today'
-                : `${todayTotal}${unit ? ' ' + unit : ''} today`}
+            <span className="flex items-center gap-1.5 text-xs text-zinc-500">
+              <span className="truncate">{statusText}</span>
+              {sinceDays != null && sinceDays >= 1 && (
+                <span
+                  className="flex flex-none items-center gap-0.5 text-zinc-400"
+                  title={`Last logged ${sinceDays === 1 ? 'yesterday' : `${sinceDays} days ago`}`}
+                >
+                  <Clock size={11} /> {sinceDays}d
+                </span>
+              )}
             </span>
           </span>
           <ChevronRight size={16} className="flex-none text-zinc-300" />
