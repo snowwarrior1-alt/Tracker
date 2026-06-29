@@ -20,7 +20,7 @@ import { todayKey, toDayKey } from '@/lib/date'
 import { dayTotals, defaultStreakSide } from '@/lib/stats'
 import { useUser } from '@/lib/useUser'
 import { EMOJIS } from '@/lib/constants'
-import { fmtNum } from '@/lib/format'
+import { fmtNum, parseMeasure } from '@/lib/format'
 import type { Tracker, Entry, StreakSide } from '@/lib/types'
 import CalendarView from '@/components/CalendarView'
 import Analytics from '@/components/Analytics'
@@ -501,8 +501,8 @@ function MeasureToday({
 }) {
   const [val, setVal] = useState('')
   function submit() {
-    const n = parseFloat(val)
-    if (Number.isNaN(n) || n === 0) return
+    const n = parseMeasure(val)
+    if (n === null) return
     onSet(n)
     setVal('')
   }

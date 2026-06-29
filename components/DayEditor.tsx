@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { X, Minus, Plus, Check } from 'lucide-react'
 import type { Tracker } from '@/lib/types'
 import { dayLabel } from '@/lib/date'
-import { fmtNum } from '@/lib/format'
+import { fmtNum, parseMeasure } from '@/lib/format'
 
 // Bottom-sheet editor for a single day: adjust the value (count), toggle done
 // (yes/no), or set a reading (measure), plus edit a free-text note. Opens for
@@ -41,8 +41,8 @@ export default function DayEditor({
   const noteDirty = text.trim() !== savedNote.trim()
 
   function submitMeasure() {
-    const n = parseFloat(mval)
-    if (Number.isNaN(n) || n === 0) return
+    const n = parseMeasure(mval)
+    if (n === null) return
     onSetValue(n)
     setMval('')
   }

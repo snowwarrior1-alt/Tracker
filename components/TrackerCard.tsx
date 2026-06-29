@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Minus, Plus, Check, ChevronRight, ChevronUp, ChevronDown, StickyNote, Clock } from 'lucide-react'
 import type { Tracker } from '@/lib/types'
 import { daysBetween } from '@/lib/date'
-import { fmtNum } from '@/lib/format'
+import { fmtNum, parseMeasure } from '@/lib/format'
 
 // One row on the dashboard. `todayTotal` is the tracker's logged value for
 // today; `onLog` applies a delta (+1 / -1) with optimistic UI handled by the
@@ -239,8 +239,8 @@ function MeasureField({
 }) {
   const [val, setVal] = useState('')
   function submit() {
-    const n = parseFloat(val)
-    if (Number.isNaN(n) || n === 0) return
+    const n = parseMeasure(val)
+    if (n === null) return
     onSubmit(n)
     setVal('')
   }
