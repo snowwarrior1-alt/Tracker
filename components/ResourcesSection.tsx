@@ -82,7 +82,8 @@ export default function ResourcesSection({ trackerId, color }: { trackerId: stri
     setUploading(true)
     try {
       const meta = await uploadResourceFile(trackerId, file)
-      const created = await addResource({ tracker_id: trackerId, kind: 'file', title: file.name, ...meta })
+      // File name lives in file_name; no separate title needed.
+      const created = await addResource({ tracker_id: trackerId, kind: 'file', ...meta })
       setResources((list) => [...list, created])
     } catch {
       setError('Could not upload that file. Try again.')
@@ -220,16 +221,18 @@ function ResourceRow({
   onConfirmDelete: () => void
 }) {
   const [opening, setOpening] = useState(false)
+  const [openErr, setOpenErr] = useState(false)
 
   // Files are private; fetch a short-lived signed URL on click, then open it.
   async function openFile() {
     if (!r.file_path) return
     setOpening(true)
+    setOpenErr(false)
     try {
       const url = await signedUrlForFile(r.file_path)
       window.open(url, '_blank', 'noopener,noreferrer')
     } catch {
-      /* transient — user can retry */
+      setOpenErr(true)
     } finally {
       setOpening(false)
     }
@@ -273,7 +276,8 @@ function ResourceRow({
         {r.kind === 'file' && (
           <div className="text-xs text-zinc-400">
             {r.file_size != null ? fmtBytes(r.file_size) : 'file'}
-            {opening ? ' · opening…' : ''}
+            {opening && ' · opening…'}
+            {openErr && <span className="text-red-500"> · couldn’t open — tap to retry</span>}
           </div>
         )}
       </div>
