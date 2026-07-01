@@ -22,6 +22,7 @@ import {
   updateTracker,
 } from '@/lib/db'
 import { todayKey, toDayKey } from '@/lib/date'
+import { reorderByIndex } from '@/lib/reorder'
 import { dayTotals, defaultStreakSide } from '@/lib/stats'
 import { useUser } from '@/lib/useUser'
 import { EMOJIS } from '@/lib/constants'
@@ -225,15 +226,10 @@ export default function TrackerDetail({ params }: { params: Promise<{ id: string
     const target = index + dir
     if (target < 0 || target >= steps.length) return
     const before = steps
-    const reordered = [...steps]
-    ;[reordered[index], reordered[target]] = [reordered[target], reordered[index]]
-    setSteps(reordered.map((s, i) => ({ ...s, sort_order: i })))
+    const { list, changed } = reorderByIndex(steps, index, target)
+    setSteps(list)
     try {
-      await Promise.all(
-        reordered
-          .map((s, i) => (s.sort_order === i ? null : updateStep(s.id, { sort_order: i })))
-          .filter((p): p is ReturnType<typeof updateStep> => p !== null),
-      )
+      await Promise.all(changed.map((c) => updateStep(c.id, { sort_order: c.sort_order })))
     } catch {
       setSteps(before)
       setError('Could not reorder steps. Try again.')

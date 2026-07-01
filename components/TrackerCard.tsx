@@ -96,6 +96,7 @@ export default function TrackerCard({
   const [expanded, setExpanded] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const longPress = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const didLongPress = useRef(false)
 
   function openEditor() {
     setDraft(note)
@@ -114,9 +115,25 @@ export default function TrackerCard({
   }
   function touchStart() {
     if (!isSeries) return
-    longPress.current = setTimeout(() => setMenuOpen(true), 500)
+    didLongPress.current = false
+    longPress.current = setTimeout(() => {
+      didLongPress.current = true
+      setMenuOpen(true)
+    }, 500)
   }
-  function touchCancel() {
+  function touchEnd(e: React.TouchEvent) {
+    if (longPress.current) {
+      clearTimeout(longPress.current)
+      longPress.current = null
+    }
+    // If the long-press fired, swallow the synthetic click so it doesn't land
+    // on the menu backdrop (which would immediately close the just-opened menu).
+    if (didLongPress.current) {
+      e.preventDefault()
+      didLongPress.current = false
+    }
+  }
+  function touchMove() {
     if (longPress.current) {
       clearTimeout(longPress.current)
       longPress.current = null
@@ -157,8 +174,8 @@ export default function TrackerCard({
         className="flex items-center gap-2 p-3"
         onContextMenu={onContext}
         onTouchStart={touchStart}
-        onTouchEnd={touchCancel}
-        onTouchMove={touchCancel}
+        onTouchEnd={touchEnd}
+        onTouchMove={touchMove}
       >
         {/* Reorder handles — the active arrow hides on the first/last row */}
         <div className="-ml-1 flex flex-none flex-col">

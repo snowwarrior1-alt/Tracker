@@ -22,6 +22,7 @@ import {
   type LatestEntry,
 } from '@/lib/db'
 import { todayKey } from '@/lib/date'
+import { reorderByIndex } from '@/lib/reorder'
 import { useUser, signOut } from '@/lib/useUser'
 import type { Tracker, Section, TrackerStep } from '@/lib/types'
 
@@ -173,15 +174,10 @@ export default function Dashboard() {
     persist: (id: string, sortOrder: number) => Promise<unknown>,
     errorMsg: string,
   ) {
-    const reordered = [...list]
-    ;[reordered[ai], reordered[bi]] = [reordered[bi], reordered[ai]]
-    setList(reordered.map((x, i) => ({ ...x, sort_order: i })))
+    const { list: next, changed } = reorderByIndex(list, ai, bi)
+    setList(next)
     try {
-      await Promise.all(
-        reordered
-          .map((x, i) => (x.sort_order === i ? null : persist(x.id, i)))
-          .filter((p): p is Promise<unknown> => p !== null),
-      )
+      await Promise.all(changed.map((c) => persist(c.id, c.sort_order)))
     } catch {
       setList(list)
       setError(errorMsg)
